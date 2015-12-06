@@ -17,7 +17,6 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -91,9 +90,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setMyLocationEnabled(true);
 
         BitmapDescriptor image = BitmapDescriptorFactory.fromResource(R.mipmap.trollface);
-        GroundOverlay groundOverlay = mMap.addGroundOverlay(new GroundOverlayOptions()
+        mMap.addGroundOverlay(new GroundOverlayOptions()
                 .image(image)
                 .position(new LatLng(39.773194, -86.158391), 500)
+                .transparency((float) 0.5));
+
+        BitmapDescriptor campusmap = BitmapDescriptorFactory.fromResource(R.mipmap.campusmap);
+        mMap.addGroundOverlay(new GroundOverlayOptions()
+                .image(campusmap)
+                .position(new LatLng(39.774600, -86.176680), 2264)
                 .transparency((float) 0.5));
 
         // Add a marker in Sydney and move the camera
