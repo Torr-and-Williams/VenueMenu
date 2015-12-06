@@ -64,6 +64,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
                         mMap.addMarker(markerOptions);
+
+                        zoomInOnMe();
                     }
                 } catch (SecurityException e) {
                     Log.e("Error:", e.getLocalizedMessage());
@@ -107,6 +109,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
+        zoomInOnMe();
+    }
+
+    public void zoomInOnMe() {
         Location location; //location
         try {
             location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
