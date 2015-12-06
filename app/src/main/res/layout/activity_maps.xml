@@ -3,26 +3,28 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_height="match_parent"
-    android:layout_width="match_parent">
+    android:layout_width="match_parent"
+    tools:context="com.andrewtorr.venuemenu.MapsActivity"
+    android:theme="@style/AppTheme">
     <fragment
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context="com.andrewtorr.venuemenu.MapsActivity" />
+        android:layout_height="match_parent" />
     <android.support.design.widget.FloatingActionButton
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_alignParentBottom="true"
-    android:layout_alignParentRight="true"
-    android:layout_alignParentEnd="true"
-    android:id="@+id/add_character_button"
-    android:src="@drawable/ic"
-    app:rippleColor="@color/magenta"
-    app:backgroundTint="@color/purple"
-    app:elevation="6dp"
-    app:borderWidth="0dp"
-    android:layout_margin="10dp" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:id="@+id/add_marker_button"
+        android:src="@drawable/ic_add_place_white_48dp"
+        app:rippleColor="@color/colorAccent"
+        app:backgroundTint="@color/colorPrimary"
+        app:elevation="6dp"
+        app:borderWidth="0dp"
+        android:layout_margin="10dp"
+        android:theme="@style/AppTheme"/>
 </RelativeLayout>
 
 
