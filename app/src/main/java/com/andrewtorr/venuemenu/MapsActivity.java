@@ -9,7 +9,9 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
+import com.andrewtorr.venuemenu.Models.Waypoint;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -21,6 +23,8 @@ import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.parse.ParseException;
+import com.parse.SaveCallback;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -34,32 +38,50 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Criteria criteria;
     private Context context;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        //Basics
         super.onCreate(savedInstanceState);
+        context = getApplicationContext();
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
+        //Butterknife
         ButterKnife.bind(this);
 
+        //Parse Stuff
+
+
+        //Set Location Manager
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         criteria = new Criteria();
 
-        context = getApplicationContext();
-
-        Log.d("context", context.toString());
 
         //addMarkerFab = new FloatingActionButton(getApplicationContext());
         addMarkerFab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Location location; //location
+                Location location;
+
                 try {
                     location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
+
                     if (location != null) {
+                        //Make a new waypoint
+                        //TODO: Throw up confirmation dialog before saving - set name, upload image etc there
+                        Waypoint waypoint = new Waypoint("Test", location.getLatitude(), location.getLongitude());
+
+                        waypoint.saveInBackground(new SaveCallback() {
+                            @Override
+                            public void done(ParseException e) {
+                                Toast.makeText(context, "Waypoint saved!", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+
                         MarkerOptions markerOptions = new MarkerOptions();
                         markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
                         mMap.addMarker(markerOptions);
