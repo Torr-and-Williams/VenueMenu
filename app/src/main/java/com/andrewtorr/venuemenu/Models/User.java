@@ -1,6 +1,7 @@
 package com.andrewtorr.venuemenu.Models;
 
 import com.parse.ParseClassName;
+import com.parse.ParseFile;
 import com.parse.ParseUser;
 
 /**
@@ -9,5 +10,7 @@ import com.parse.ParseUser;
  */
 @ParseClassName("User")
 public class User extends ParseUser {
-
+    private String username;
+    private ParseFile avatar;
+    private Layer userLayer;
 }
