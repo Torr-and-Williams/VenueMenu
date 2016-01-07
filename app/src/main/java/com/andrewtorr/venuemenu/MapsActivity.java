@@ -111,6 +111,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setMapType(4);
         mMap.setMyLocationEnabled(true);
 
+        //set search scale to between 0.1 and 10 km
+        //query layers within radius (actually a square of sides 2r, for now at least)
+
         BitmapDescriptor image = BitmapDescriptorFactory.fromResource(R.mipmap.trollface);
         mMap.addGroundOverlay(new GroundOverlayOptions()
                 .image(image)

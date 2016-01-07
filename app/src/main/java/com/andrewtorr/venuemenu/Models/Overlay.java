@@ -1,6 +1,7 @@
 package com.andrewtorr.venuemenu.Models;
 
 import com.parse.ParseClassName;
+import com.parse.ParseFile;
 import com.parse.ParseObject;
 
 /**
@@ -9,5 +10,7 @@ import com.parse.ParseObject;
  */
 @ParseClassName("Overlay")
 public class Overlay extends ParseObject {
-
+    private Lot lot;
+    private Layer layer;
+    private ParseFile image;
 }

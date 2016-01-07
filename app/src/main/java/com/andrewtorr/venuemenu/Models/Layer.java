@@ -9,5 +9,8 @@ import com.parse.ParseObject;
  */
 @ParseClassName("Layer")
 public class Layer extends ParseObject {
-    
+    private Client client;
+    private User user;
+    private String layerType;
+
 }
