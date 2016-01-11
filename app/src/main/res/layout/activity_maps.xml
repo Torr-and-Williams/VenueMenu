@@ -33,13 +33,29 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:id="@+id/edit_layer_button"
-        android:src="@drawable/ic_add_place_white_48dp"
+        android:src="@drawable/ic_edit_layers_white_3x"
         app:rippleColor="@color/colorAccent"
         app:backgroundTint="@color/colorPrimary"
         app:elevation="6dp"
         app:borderWidth="0dp"
         android:layout_margin="10dp"
         android:theme="@style/AppTheme"/>
+
+    <android.support.design.widget.FloatingActionButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:id="@+id/add_lot_button"
+        android:src="@drawable/ic_add_white_48pt_3x"
+        app:rippleColor="@color/colorAccent"
+        app:backgroundTint="@color/colorPrimary"
+        app:elevation="6dp"
+        app:borderWidth="0dp"
+        android:layout_margin="10dp"
+        android:theme="@style/AppTheme"
+        android:visibility="invisible"/>
 </RelativeLayout>
 
 

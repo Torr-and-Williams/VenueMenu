@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/popup_dialog"
+    android:layout_width="match_parent"
+    android:layout_height="fill_parent">
+
+    <ImageButton
+        android:id="@+id/top_view"
+        android:layout_width="match_parent"
+        android:layout_height="fill_parent"
+        android:background="@color/transparency"
+        android:layout_above="@+id/menu_holder"/>
+
+    <LinearLayout
+        android:id="@+id/menu_holder"
+        android:layout_width="fill_parent"
+        android:layout_height="100dp"
+        android:orientation="horizontal"
+        android:animateLayoutChanges="true"
+        android:layout_alignParentBottom="true"
+        android:background="#00000000">
+    </LinearLayout>
+</RelativeLayout>
