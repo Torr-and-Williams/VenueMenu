@@ -193,6 +193,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             //(Use editImageView in Do as a template)
 
             //TODO: Set up an on touch listener for the point, moves while touching?
+
             //TODO: OR set up touch listener to check to see if it's near a point at the beginning? - that sounds more complicated
 
             //TODO: Add points to an array list
@@ -223,12 +224,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void confirmOverlay() {
         Log.d(TAG, "setting Overlay");
         //TODO: Figure out math for width
+
         //TODO: Rotate image depending on portrait/landscape
 
         //TODO: Log statement whenever zoom changed - get zoom level
 
         //TODO: Try various widths, compare to zoom level - reverse-engineer algorithm
-
 
         BitmapDescriptor image = BitmapDescriptorFactory.fromPath(picturePath);
         GroundOverlayOptions overlayOptions = new GroundOverlayOptions();
