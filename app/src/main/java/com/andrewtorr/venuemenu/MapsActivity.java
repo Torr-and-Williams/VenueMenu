@@ -2,10 +2,15 @@ package com.andrewtorr.venuemenu;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -16,6 +21,7 @@ import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,17 +51,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     FloatingActionButton editLayerFab;
     @Bind(R.id.add_lot_button)
     FloatingActionButton addLotButton;
+    @Bind(R.id.image_preview)
+    ImageView preview;
+    @Bind(R.id.confirm_overlay)
+    FloatingActionButton overlayConfirm;
 
     private GoogleMap mMap;
     private LocationManager locationManager;
     private Criteria criteria;
     private Context context;
 
+    private String TAG = "MapsAcivity";
+
     private boolean leave = true;
     private boolean mainBtns = true;
     private boolean overlayMode = false;
     private boolean pathMode = false;
     private boolean lotMode = false;
+
+    private String picturePath;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -173,22 +187,69 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.add_lot_button)
     public void addLot() {
-        //TODO: Make a canvas "visible", set up a touch listener to draw a point when the touch ends
-        //(Use editImageView in Do as a template)
+        if (lotMode) {
+            Log.d(TAG, "ADD lot mode Go!");
+            //TODO: Make a canvas "visible", set up a touch listener to draw a point when the touch ends
+            //(Use editImageView in Do as a template)
 
-        //TODO: Set up an on touch listener for the point, moves while touching?
-        //TODO: OR set up touch listener to check to see if it's near a point at the beginning? - that sounds more complicated
+            //TODO: Set up an on touch listener for the point, moves while touching?
+            //TODO: OR set up touch listener to check to see if it's near a point at the beginning? - that sounds more complicated
 
-        //TODO: Add points to an array list
+            //TODO: Add points to an array list
 
-        //TODO: Draw lines between all the points in order
+            //TODO: Draw lines between all the points in order
 
-        //TODO: After at least two points have been drawn, allow snapping to the first point to complete the shape
+            //TODO: After at least two points have been drawn, allow snapping to the first point to complete the shape
 
-        //TODO: Prevent the lines from crossing somehow???
+            //TODO: Prevent the lines from crossing somehow???
+
+            //TODO: If you click on an existing point on an existing lot, it should set the first point for the new lot there
+
+        } else if (overlayMode) {
+            Log.d(TAG, "ADD overlay mode Go!");
+            preview.setVisibility(View.VISIBLE);
+            mMap.getUiSettings().setTiltGesturesEnabled(false);
+
+            Intent i = new Intent(Intent.ACTION_PICK,android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            startActivityForResult(i, 1);
+
+        } else if (pathMode) {
+            Log.d(TAG, "ADD path mode Go!");
+
+        }
+    }
+
+    @OnClick(R.id.confirm_overlay)
+    public void confirmOverlay() {
+        Log.d(TAG, "setting Overlay");
+        //TODO: Figure out math for width
+        //TODO: Rotate image depending on portrait/landscape
+
+        //TODO: Log statement whenever zoom changed - get zoom level
+
+        //TODO: Try various widths, compare to zoom level - reverse-engineer algorithm
 
 
-        //TODO: If you click on an existing point on an existing lot, it should set the first point for the new lot there
+        BitmapDescriptor image = BitmapDescriptorFactory.fromPath(picturePath);
+        GroundOverlayOptions overlayOptions = new GroundOverlayOptions();
+        float width;
+        float zoom = mMap.getCameraPosition().zoom;
+        width = (float) (200000 / Math.pow(zoom, 3));
+        Log.d(TAG, "width: " + width);
+
+        LatLng latLng = mMap.getCameraPosition().target;
+
+        overlayOptions.position(latLng, width);
+        overlayOptions.bearing(mMap.getCameraPosition().bearing);
+        overlayOptions.image(image);
+
+        mMap.addGroundOverlay(overlayOptions);
+
+        Log.d(TAG, "done setting overlay");
+        preview.setImageBitmap(null);
+        preview.setVisibility(View.INVISIBLE);
+        overlayConfirm.setVisibility(View.INVISIBLE);
+        addLotButton.setVisibility(View.VISIBLE);
     }
 
 
@@ -282,6 +343,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     case R.id.button2:
                         Log.d("Main Activity", "set lot button");
+                        addLotButton.setVisibility(View.VISIBLE);
 
                         mainBtns = false;
                         lotMode = true;
@@ -289,6 +351,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     case R.id.button3:
                         Log.d("Main Activity", "set pathnet button");
+                        addLotButton.setVisibility(View.VISIBLE);
 
                         mainBtns = false;
                         pathMode = true;
@@ -296,6 +359,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     case R.id.button4:
                         Log.d("Main Activity", "set overlay button");
+                        addLotButton.setVisibility(View.VISIBLE);
 
                         goFlat();
                         mainBtns = false;
@@ -363,5 +427,40 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private void editOverlays() {
 
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Log.d(TAG,"onActivityResult");
+        if (requestCode == 1 && resultCode == RESULT_OK && null != data) {
+            Log.d(TAG,"image loaded successfully!");
+            Uri selectedImage = data.getData();
+            String[] filePathColumn = { MediaStore.Images.Media.DATA };
+            Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
+            cursor.moveToFirst();
+            int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+            picturePath = cursor.getString(columnIndex);
+            cursor.close();
+            preview.setImageBitmap(BitmapFactory.decodeFile(picturePath));
+            addLotButton.setVisibility(View.INVISIBLE);
+            overlayConfirm.setVisibility(View.VISIBLE);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (lotMode || overlayMode || pathMode) {
+            addMarkerFab.setVisibility(View.VISIBLE);
+            editLayerFab.setVisibility(View.VISIBLE);
+            addLotButton.setVisibility(View.INVISIBLE);
+            preview.setVisibility(View.INVISIBLE);
+            overlayConfirm.setVisibility(View.INVISIBLE);
+            lotMode = false;
+            overlayMode = false;
+            pathMode = false;
+        } else {
+            super.onBackPressed();
+        }
     }
 }

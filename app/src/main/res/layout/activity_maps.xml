@@ -11,6 +11,19 @@
         android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/image_preview"
+        android:layout_margin="50dp"
+        android:visibility="invisible"
+        android:clickable="false"
+        android:scaleType="fitCenter"
+        android:alpha="0.3"/>
+
+    <!-- Buttons -->
+
     <android.support.design.widget.FloatingActionButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -56,6 +69,22 @@
         android:layout_margin="10dp"
         android:theme="@style/AppTheme"
         android:visibility="invisible"/>
+
+    <android.support.design.widget.FloatingActionButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:id="@+id/confirm_overlay"
+        android:src="@drawable/ic_check_white_48pt_3x"
+        app:rippleColor="@color/colorPrimary"
+        app:backgroundTint="@color/colorPrimaryDark"
+        app:elevation="6dp"
+        app:borderWidth="0dp"
+        android:visibility="invisible"
+        android:layout_margin="10dp"
+        android:theme="@style/AppTheme"/>
 </RelativeLayout>
 
 
