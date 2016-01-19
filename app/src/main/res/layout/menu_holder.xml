@@ -14,7 +14,7 @@
     <LinearLayout
         android:id="@+id/menu_holder"
         android:layout_width="fill_parent"
-        android:layout_height="100dp"
+        android:layout_height="72dp"
         android:orientation="horizontal"
         android:animateLayoutChanges="true"
         android:layout_alignParentBottom="true"

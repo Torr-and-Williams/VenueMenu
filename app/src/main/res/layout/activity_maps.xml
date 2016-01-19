@@ -5,7 +5,9 @@
     android:layout_height="match_parent"
     android:layout_width="match_parent"
     tools:context="com.andrewtorr.venuemenu.MapsActivity"
+    android:id="@+id/maps_layout"
     android:theme="@style/AppTheme">
+
     <fragment
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
@@ -21,6 +23,22 @@
         android:clickable="false"
         android:scaleType="fitCenter"
         android:alpha="0.3"/>
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/lots_drawing"
+        android:layout_margin="0dp"
+        android:visibility="invisible"
+        android:clickable="false"
+        android:scaleType="fitCenter" />
+
+    <ImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:id="@+id/lot_corner"
+        android:scaleType="fitXY"
+        android:visibility="invisible"/>
 
     <!-- Buttons -->
 

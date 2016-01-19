@@ -2,9 +2,15 @@ package com.andrewtorr.venuemenu;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Point;
+import android.graphics.drawable.BitmapDrawable;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
@@ -13,8 +19,12 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
+import android.support.v7.app.AlertDialog;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -22,7 +32,8 @@ import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.andrewtorr.venuemenu.Models.Waypoint;
@@ -40,6 +51,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.parse.ParseException;
 import com.parse.SaveCallback;
 
+import java.util.ArrayList;
+
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -51,10 +64,16 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     FloatingActionButton editLayerFab;
     @Bind(R.id.add_lot_button)
     FloatingActionButton addLotButton;
-    @Bind(R.id.image_preview)
-    ImageView preview;
     @Bind(R.id.confirm_overlay)
     FloatingActionButton overlayConfirm;
+    @Bind(R.id.maps_layout)
+    RelativeLayout map_layout;
+    @Bind(R.id.lots_drawing)
+    ImageView lots_drawing;
+    @Bind(R.id.image_preview)
+    ImageView preview;
+    @Bind(R.id.lot_corner)
+    ImageView lot_corner;
 
     private GoogleMap mMap;
     private LocationManager locationManager;
@@ -68,8 +87,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private boolean overlayMode = false;
     private boolean pathMode = false;
     private boolean lotMode = false;
+    private boolean newPoint = false;
+    private boolean movingCorner = false;
+    private boolean lotClosed = false;
 
     private String picturePath;
+
+    private Bitmap drawing;
+    private Canvas canvas;
+    private Paint paint;
+    private int x;
+    private int y;
+    private RelativeLayout.LayoutParams params;
+    private DisplayMetrics displayMetrics;
+    private int width;
+    private int height;
+    private boolean flatMode = false;
+
+    private ArrayList<Point> points;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +116,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        displayMetrics = getApplicationContext().getResources().getDisplayMetrics();
 
         //Butterknife
         ButterKnife.bind(this);
@@ -108,6 +145,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
         mMap.setMapType(4);
         mMap.setMyLocationEnabled(true);
+
+        if (!mMap.getUiSettings().isTiltGesturesEnabled()) {
+            mMap.getUiSettings().setTiltGesturesEnabled(true);
+        }
 
         //set search scale to between 0.1 and 10 km
         //query layers within radius (actually a square of sides 2r, for now at least)
@@ -137,7 +178,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-        zoomInOnMe();
+        mMap.setOnCameraChangeListener(new GoogleMap.OnCameraChangeListener() {
+            @Override
+            public void onCameraChange(CameraPosition cameraPosition) {
+                Log.d(TAG, "zoom: " + cameraPosition.zoom);
+            }
+        });
+
+        zoomInOnMe(15);
     }
 
 
@@ -157,6 +205,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (location != null) {
                 //Make a new waypoint
                 //TODO: Throw up confirmation dialog before saving - set name, upload image etc there
+                //TODO: Just start with the name for now. Create a view that becomes visible when this happens with an edittext in
                 Waypoint waypoint = new Waypoint("Test", location.getLatitude(), location.getLongitude());
 
                 waypoint.saveInBackground(new SaveCallback() {
@@ -170,7 +219,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 markerOptions.position(new LatLng(location.getLatitude(), location.getLongitude()));
                 mMap.addMarker(markerOptions);
 
-                zoomInOnMe();
+                zoomInOnMe(18);
             }
         } catch (SecurityException e) {
             Log.e("Error:", e.getLocalizedMessage());
@@ -187,20 +236,171 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.add_lot_button)
     public void addLot() {
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+
+        width = size.x;
+        height = size.y;
+
         if (lotMode) {
             Log.d(TAG, "ADD lot mode Go!");
-            //TODO: Make a canvas "visible", set up a touch listener to draw a point when the touch ends
             //(Use editImageView in Do as a template)
+            points = new ArrayList<>();
+            Log.d(TAG, "child count: " + map_layout.getChildCount());
+            for (int i = 1; i < map_layout.getChildCount(); i++) {
+                View view = map_layout.getChildAt(i);
+                if ((view.getTag() != null) && (view.getTag() != "0")) {
+                    map_layout.removeViewAt(i);
+                }
+            }
 
-            //TODO: Set up an on touch listener for the point, moves while touching?
+            drawing = Bitmap.createBitmap(lots_drawing.getWidth(), lots_drawing.getHeight(), Bitmap.Config.ARGB_8888);
+            canvas = new Canvas(drawing);
+            paint = new Paint();
+            paint.setStrokeWidth(10);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(getResources().getColor(R.color.colorAccent));
 
-            //TODO: OR set up touch listener to check to see if it's near a point at the beginning? - that sounds more complicated
+            final float statusBarHeight = getResources().getDimension(getResources().getIdentifier("status_bar_height", "dimen", "android"));
 
-            //TODO: Add points to an array list
+            Log.d(TAG, "status bar height - " + statusBarHeight);
 
-            //TODO: Draw lines between all the points in order
+            lots_drawing.setVisibility(View.VISIBLE);
 
-            //TODO: After at least two points have been drawn, allow snapping to the first point to complete the shape
+            preview.setVisibility(View.VISIBLE);
+            preview.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View view, MotionEvent event) {
+                    x = Math.round(event.getRawX());
+                    y = Math.round(event.getRawY() - statusBarHeight);
+                    if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                        lot_corner.setVisibility(View.VISIBLE);
+                        if (!movingCorner) {
+                            Log.d(TAG, "make a new Lot Corner");
+                            params = (RelativeLayout.LayoutParams) lot_corner.getLayoutParams();
+                            params.setMargins(x, y, 0, 0);
+                            lot_corner.setLayoutParams(params);
+                            lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_orange));
+
+                            if (points != null) {
+                                lot_corner.setTag(points.size() - 1);
+                            } else {
+                                lot_corner.setTag(0);
+                            }
+
+                            newPoint = true;
+                        }
+                    } else if (event.getAction() == MotionEvent.ACTION_MOVE) {
+                        Log.d(TAG, "move corner");
+                        params = (RelativeLayout.LayoutParams) lot_corner.getLayoutParams();
+                        params.setMargins(x, y, 0, 0);
+                        lot_corner.setLayoutParams(params);
+                        lot_corner.refreshDrawableState();
+
+                        //Update the lot outline
+                        if ((lot_corner.getTag() != null) && (points.size() > 0)) {
+                            Log.d(TAG, "moving corner: " + movingCorner);
+                            int index = Integer.parseInt(lot_corner.getTag().toString());
+                            Log.d(TAG, "lot tag: " + index);
+                            Point point = new Point(x, y);
+
+                            if (movingCorner) {
+                                Log.d(TAG, "new corner at index");
+                                points.remove(index);
+                                points.add(index, point);
+                                drawLot();
+
+                            } else {
+                                Log.d(TAG, "new corner at " + (index + 1));
+                                points.add(index + 1, point);
+                                points.remove(index + 1);
+                                drawLot();
+
+                            }
+                        } else {
+                            Log.e(TAG, "ERROR 2! Cannot update Lot outline!");
+                        }
+
+
+                    } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                        if (newPoint) {
+                            lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_white));
+                            Log.d(TAG, "save corner");
+                            Point point = new Point(x, y);
+                            points.add(point);
+                            Log.d(TAG, points.size() + " points");
+                            newPoint = false;
+
+                            lot_corner.setVisibility(View.INVISIBLE);
+                            ImageView cornerView = new ImageView(getApplicationContext());
+                            cornerView.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_white));
+                            RelativeLayout.LayoutParams cParams = new RelativeLayout.LayoutParams(Math.round(32 * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)), Math.round(32 * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)));
+                            cParams.setMargins(x, y, 0, 0);
+                            cornerView.setLayoutParams(cParams);
+                            //Save the position of the point for deletion
+                            cornerView.setTag(points.size() - 1);
+                            map_layout.addView(cornerView);
+                            drawLot();
+
+                            //Set a new onClickListener on the corner to move it
+                            cornerView.setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    Log.d(TAG, "corner tapped");
+                                    if (movingCorner) {
+                                        Log.d(TAG, "moving corner false");
+                                        lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_orange));
+                                        movingCorner = false;
+                                    } else {
+                                        lot_corner = (ImageView) view;
+                                        Log.d(TAG, "moving corner true");
+                                        lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_white));
+                                        movingCorner = true;
+                                    }
+                                }
+                            });
+
+                            //Set long click listener to delete the corner
+                            cornerView.setOnLongClickListener(new View.OnLongClickListener() {
+                                @Override
+                                public boolean onLongClick(final View view) {
+                                    //final View theView = view;
+                                    AlertDialog.Builder builder =
+                                            new AlertDialog.Builder(MapsActivity.this, R.style.StyledDialog);
+                                    builder.setTitle("Delete");
+                                    builder.setMessage("Delete this point?");
+                                    builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            points.remove(Integer.parseInt(view.getTag().toString()));
+                                            map_layout.removeView(view);
+                                            drawLot();
+                                            dialog.dismiss();
+                                        }
+                                    });
+                                    builder.setNegativeButton("Nvm", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            dialog.cancel();
+                                        }
+                                    });
+                                    builder.show();
+                                    return false;
+                                }
+                            });
+                        } else {
+                            //Change existing point
+                            Log.d(TAG, "moving existing corner");
+                        }
+
+                    }
+                    return true;
+                }
+            });
+
+            //TODO: After at least three points have been created, allow snapping to the first point to complete the shape
 
             //TODO: Prevent the lines from crossing somehow???
 
@@ -223,24 +423,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @OnClick(R.id.confirm_overlay)
     public void confirmOverlay() {
         Log.d(TAG, "setting Overlay");
-        //TODO: Figure out math for width
-
-        //TODO: Rotate image depending on portrait/landscape
-
-        //TODO: Log statement whenever zoom changed - get zoom level
-
-        //TODO: Try various widths, compare to zoom level - reverse-engineer algorithm
 
         BitmapDescriptor image = BitmapDescriptorFactory.fromPath(picturePath);
         GroundOverlayOptions overlayOptions = new GroundOverlayOptions();
-        float width;
-        float zoom = mMap.getCameraPosition().zoom;
-        width = (float) (200000 / Math.pow(zoom, 3));
+
+        Display display = getWindowManager().getDefaultDisplay();
+        Point size = new Point();
+        display.getSize(size);
+
+        double zoom = mMap.getCameraPosition().zoom;
+        double width = 15400000.0 / Math.pow(2,(zoom-1));
         Log.d(TAG, "width: " + width);
 
         LatLng latLng = mMap.getCameraPosition().target;
 
-        overlayOptions.position(latLng, width);
+        overlayOptions.position(latLng, (float) width);
         overlayOptions.bearing(mMap.getCameraPosition().bearing);
         overlayOptions.image(image);
 
@@ -258,7 +455,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     //Functions
 
-    public void zoomInOnMe() {
+    public void zoomInOnMe(int zoom) {
         Location location; //location
         try {
             location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
@@ -268,7 +465,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 CameraPosition cameraPosition = new CameraPosition.Builder()
                         .target(new LatLng(location.getLatitude(), location.getLongitude()))      // Sets the center of the map to location user
-                        .zoom(15)                   // Sets the zoom
+                        .zoom(zoom)                   // Sets the zoom
                         .bearing(45)                // Sets the orientation of the camera to east
                         .tilt(30)                   // Sets the tilt of the camera
                         .build();                   // Creates a CameraPosition from the builder
@@ -281,6 +478,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void goFlat() {
         Location location; //location
+        flatMode = true;
         try {
             location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
             if (location != null) {
@@ -294,6 +492,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         .tilt(0)                   // Sets the tilt of the camera
                         .build();                   // Creates a CameraPosition from the builder
                 mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+                mMap.getUiSettings().setTiltGesturesEnabled(false);
             }
         } catch (SecurityException e) {
             Log.e("Error:", e.getLocalizedMessage());
@@ -314,19 +513,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         final ViewGroup newView = (ViewGroup) LayoutInflater.from(this).inflate(
                 R.layout.bottom_menu, holder, false);
 
-        TranslateAnimation animateIn = new TranslateAnimation(0,0,256,0);
+        TranslateAnimation animateIn = new TranslateAnimation(0,0,250,0);
         animateIn.setDuration(250);
         newView.setAnimation(animateIn);
         holder.addView(newView, 0);
 
-        final TextView button1 = (TextView) dialog_view.findViewById(R.id.button1);
-        final TextView button2 = (TextView) dialog_view.findViewById(R.id.button2);
-        final TextView button3 = (TextView) dialog_view.findViewById(R.id.button3);
-        final TextView button4 = (TextView) dialog_view.findViewById(R.id.button4);
+        final LinearLayout button1 = (LinearLayout) dialog_view.findViewById(R.id.button1);
+        final LinearLayout button2 = (LinearLayout) dialog_view.findViewById(R.id.button2);
+        final LinearLayout button3 = (LinearLayout) dialog_view.findViewById(R.id.button3);
+        final LinearLayout button4 = (LinearLayout) dialog_view.findViewById(R.id.button4);
 
         final ImageButton topView = (ImageButton) dialog_view.findViewById(R.id.top_view);
 
-        final TranslateAnimation animateOut = new TranslateAnimation(0, 0, 0, 256);
+        final TranslateAnimation animateOut = new TranslateAnimation(0, 0, 0, 250);
         animateOut.setDuration(250);
         newView.setAnimation(animateOut);
 
@@ -343,19 +542,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         break;
 
                     case R.id.button2:
-                        Log.d("Main Activity", "set lot button");
-                        addLotButton.setVisibility(View.VISIBLE);
-
-                        mainBtns = false;
-                        lotMode = true;
-                        break;
-
-                    case R.id.button3:
                         Log.d("Main Activity", "set pathnet button");
                         addLotButton.setVisibility(View.VISIBLE);
 
                         mainBtns = false;
                         pathMode = true;
+                        break;
+
+                    case R.id.button3:
+                        Log.d("Main Activity", "set lot button");
+                        addLotButton.setVisibility(View.VISIBLE);
+
+                        goFlat();
+                        mainBtns = false;
+                        lotMode = true;
                         break;
 
                     case R.id.button4:
@@ -430,14 +630,40 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     }
 
+    private void drawLot() {
+        drawing = Bitmap.createBitmap(lots_drawing.getWidth(), lots_drawing.getHeight(), Bitmap.Config.ARGB_8888);
+        canvas = new Canvas(drawing);
+
+        if (lotClosed) {
+            Log.d(TAG, "lot is closed, draw a polygon");
+        } else {
+            if ((points != null) && (points.size() > 1)) {
+                for (int i = 1; i < points.size(); i++) {
+                    int offset = Math.round(16 * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT));
+                    //int offset = 32;
+                    Point start = points.get(i - 1);
+                    Point end = points.get(i);
+                    Log.d(TAG, "start: " + start.x + ", " + start.y + ", end:" + end.x + ", " + end.y);
+                    canvas.drawLine(start.x + offset, start.y + offset, end.x + offset, end.y + offset, paint);
+                }
+            }
+        }
+
+
+
+        canvas.drawBitmap(drawing, 0, 0, null);
+        Log.d(TAG, "drawing lot outline");
+        lots_drawing.setImageDrawable(new BitmapDrawable(getResources(), drawing));
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        Log.d(TAG,"onActivityResult");
+        Log.d(TAG, "onActivityResult");
         if (requestCode == 1 && resultCode == RESULT_OK && null != data) {
-            Log.d(TAG,"image loaded successfully!");
+            Log.d(TAG, "image loaded successfully!");
             Uri selectedImage = data.getData();
-            String[] filePathColumn = { MediaStore.Images.Media.DATA };
+            String[] filePathColumn = {MediaStore.Images.Media.DATA};
             Cursor cursor = getContentResolver().query(selectedImage, filePathColumn, null, null, null);
             cursor.moveToFirst();
             int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
@@ -452,15 +678,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onBackPressed() {
         if (lotMode || overlayMode || pathMode) {
+            Log.d(TAG, "back - in an edit mode");
             addMarkerFab.setVisibility(View.VISIBLE);
             editLayerFab.setVisibility(View.VISIBLE);
             addLotButton.setVisibility(View.INVISIBLE);
             preview.setVisibility(View.INVISIBLE);
             overlayConfirm.setVisibility(View.INVISIBLE);
+            lots_drawing.setVisibility(View.INVISIBLE);
             lotMode = false;
             overlayMode = false;
             pathMode = false;
+
+            if (lotMode) {
+                Log.d(TAG, "child count: " + map_layout.getChildCount());
+                for (int i = 1; i < map_layout.getChildCount(); i++) {
+                    View view = map_layout.getChildAt(i);
+                    if ((view.getTag() != null) && (view.getTag() != "0")) {
+                        map_layout.removeViewAt(i);
+                    }
+                }
+            }
         } else {
+            Log.d(TAG, "back - not in an edit mode");
             super.onBackPressed();
         }
     }
