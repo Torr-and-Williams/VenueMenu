@@ -2,7 +2,10 @@ package com.andrewtorr.venuemenu.Models;
 
 import com.parse.ParseClassName;
 import com.parse.ParseFile;
+import com.parse.ParseGeoPoint;
 import com.parse.ParseObject;
+
+import java.io.File;
 
 /**
  * Created by Andrew on 12/13/2015.
@@ -10,9 +13,8 @@ import com.parse.ParseObject;
  */
 @ParseClassName("Waypoint")
 public class Waypoint extends ParseObject {
+    private ParseGeoPoint point;
     private String name;
-    private double lat;
-    private double lng;
     private ParseFile imagePFile;
 
     public String getName() {
@@ -23,22 +25,6 @@ public class Waypoint extends ParseObject {
         put("name", name);
     }
 
-    public double getLat() {
-        return getDouble("lat");
-    }
-
-    public void setLat(double lat) {
-        put("lat", lat);
-    }
-
-    public double getLng() {
-        return getDouble("lng");
-    }
-
-    public void setLng(double lng) {
-        put("lng", lng);
-    }
-
     public ParseFile getImagePFile() {
         return getParseFile("imagePFile");
     }
@@ -47,12 +33,22 @@ public class Waypoint extends ParseObject {
         put("imagePFile", imagePFile);
     }
 
+    public ParseGeoPoint getPoint() {
+        return getParseGeoPoint("point");
+    }
+
+    public void setPoint(ParseGeoPoint point) {
+        put("point", point);
+    }
+
     public Waypoint() {}
 
-    public Waypoint(String wname, double wlat, double wlng) {
+    public Waypoint(String wname, double wlat, double wlng, File imageFile) {
         super();
         setName(wname);
-        setLat(wlat);
-        setLng(wlng);
+        setPoint(new ParseGeoPoint(wlat, wlng));
+
+        //TODO: Save image
+
     }
 }

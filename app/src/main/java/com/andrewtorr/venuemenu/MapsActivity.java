@@ -8,6 +8,9 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.LightingColorFilter;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.drawable.BitmapDrawable;
@@ -36,6 +39,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.andrewtorr.venuemenu.Models.Client;
 import com.andrewtorr.venuemenu.Models.Waypoint;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -48,10 +52,14 @@ import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.parse.FindCallback;
 import com.parse.ParseException;
+import com.parse.ParseGeoPoint;
+import com.parse.ParseQuery;
 import com.parse.SaveCallback;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
@@ -106,6 +114,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private ArrayList<Point> points;
 
+    private ParseQuery<Client> clientQuery;
+    ArrayList<Client> visibleClients;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         //Basics
@@ -150,8 +161,74 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mMap.getUiSettings().setTiltGesturesEnabled(true);
         }
 
-        //set search scale to between 0.1 and 10 km
-        //query layers within radius (actually a square of sides 2r, for now at least)
+        //TODO: Load all local public map data
+
+        try {
+            Location location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
+            final ParseGeoPoint here = new ParseGeoPoint(location.getLatitude(), location.getLongitude());
+            clientQuery = ParseQuery.getQuery(Client.class);
+            clientQuery.whereWithinKilometers("center", here, 5);
+            clientQuery.findInBackground(new FindCallback<Client>() {
+                @Override
+                public void done(List<Client> clients, ParseException e) {
+                    if (e == null) {
+                        if (clients.size() > 0) {
+                            Log.d(TAG, "local clients found!");
+                        } else {
+                            Log.d(TAG, "no local clients found, creating 3 dummy clients");
+                            Client clientA = new Client(here.getLatitude(), here.getLongitude(), here.getLatitude() - 0.001, here.getLongitude() - 0.002, "Test Client A", 0xff6400);
+                            Client clientB = new Client(here.getLatitude() + 0.002, here.getLongitude() + 0.001, here.getLatitude() + 0.001, here.getLongitude() - 0.001, "Test Client B", 0x0eb412);
+                            Client clientC = new Client(here.getLatitude() - 0.001, here.getLongitude() + 0.003, here.getLatitude() - 0.003, here.getLongitude() + 0.002, "Test Client C", 0x0e40ff);
+
+                            clients.add(clientA);
+                            clients.add(clientB);
+                            clients.add(clientC);
+
+                            clientA.saveInBackground();
+                            clientB.saveInBackground();
+                            clientC.saveInBackground();
+
+                            Log.d(TAG, "dummy clients saved!");
+                        }
+
+
+                        Log.d(TAG, "Showing local clients");
+                        for (Client client : clients) {
+                            Log.d(TAG, client.getClientName() + " - N: " + client.getNbound() + " S: " + client.getSbound() + " E: " + client.getEbound() + " W: " + client.getWbound());
+                            int height = (int) Math.round((client.getNbound() - client.getSbound())*100000);
+                            int width = (int) Math.round((client.getEbound() - client.getWbound())*100000);
+                            Bitmap image = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                            Bitmap source = BitmapFactory.decodeResource(context.getResources(), R.mipmap.client_square);
+                            Canvas canvas = new Canvas(image);
+                            Paint paint = new Paint();
+                            ColorFilter filter = new LightingColorFilter(client.getColor(), 0);
+                            paint.setColorFilter(filter);
+                            Matrix matrix = new Matrix();
+                            // resize the bit map
+                            if (height > width) {
+                                matrix.postScale(1, ((float) width) / ((float) height));
+                            } else {
+                                matrix.postScale(((float) height) / ((float) width), 1);
+                            }
+                            Log.d(TAG, matrix.toString());
+                            canvas.drawBitmap(source, matrix, paint);
+                            BitmapDescriptor imaged = BitmapDescriptorFactory.fromBitmap(image);
+
+                            //BitmapDescriptor image = BitmapDescriptorFactory.fromResource(R.drawable.client_square);
+                            mMap.addGroundOverlay(new GroundOverlayOptions()
+                                    .image(imaged)
+                                    .position(client.getCenterLatLng(), 500)
+                                    .transparency((float) 0.5));
+                        }
+
+                        visibleClients = new ArrayList<>(clients);
+                    }
+                }
+            });
+        } catch (SecurityException e) {
+            Log.e("Error:", e.getLocalizedMessage());
+        }
+
 
         BitmapDescriptor image = BitmapDescriptorFactory.fromResource(R.mipmap.trollface);
         mMap.addGroundOverlay(new GroundOverlayOptions()
@@ -165,10 +242,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .position(new LatLng(39.774600, -86.176680), 2264)
                 .transparency((float) 0.5));
 
-        // Add a marker in Sydney and move the camera
-        //LatLng sydney = new LatLng(-34, 151);
-        //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+
+        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                Log.d(TAG, "map clicked! lat: " + latLng.latitude + ", lng : " + latLng.longitude);
+                for (Client client : visibleClients) {
+
+                    //TODO: Handle client overlap!!
+                    if ((latLng.latitude <= client.getNbound()) && (latLng.latitude >= client.getSbound())) {
+                        Log.d(TAG, "clicked between vertical bounds of " + client.getClientName());
+                    }
+
+                    if ((latLng.latitude <= client.getNbound()) && (latLng.latitude >= client.getSbound()) && (latLng.longitude >= client.getEbound()) && (latLng.longitude <= client.getWbound())) {
+                        Log.d(TAG, "Client " + client.getClientName() + " clicked!");
+                    }
+                }
+            }
+        });
+
 
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
             @Override
@@ -197,7 +289,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @OnClick(R.id.add_marker_button)
     public void addMarker() {
-        Location location;
+        Location location; //Location
 
         try {
             location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));
@@ -205,8 +297,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (location != null) {
                 //Make a new waypoint
                 //TODO: Throw up confirmation dialog before saving - set name, upload image etc there
-                //TODO: Just start with the name for now. Create a view that becomes visible when this happens with an edittext in
-                Waypoint waypoint = new Waypoint("Test", location.getLatitude(), location.getLongitude());
+                //TODO: Just start with the name for now. Create a view with an edittext in that becomes visible when this happens
+                Waypoint waypoint = new Waypoint("Test", location.getLatitude(), location.getLongitude(), null);
 
                 waypoint.saveInBackground(new SaveCallback() {
                     @Override
@@ -432,7 +524,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         display.getSize(size);
 
         double zoom = mMap.getCameraPosition().zoom;
-        double width = 15400000.0 / Math.pow(2,(zoom-1));
+        double width = 15450000.0 / Math.pow(2, (zoom - 1));
         Log.d(TAG, "width: " + width);
 
         LatLng latLng = mMap.getCameraPosition().target;
