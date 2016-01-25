@@ -177,8 +177,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         } else {
                             Log.d(TAG, "no local clients found, creating 3 dummy clients");
                             Client clientA = new Client(here.getLatitude(), here.getLongitude(), here.getLatitude() - 0.001, here.getLongitude() - 0.002, "Test Client A", 0xff6400);
-                            Client clientB = new Client(here.getLatitude() + 0.002, here.getLongitude() + 0.001, here.getLatitude() + 0.001, here.getLongitude() - 0.001, "Test Client B", 0x0eb412);
-                            Client clientC = new Client(here.getLatitude() - 0.001, here.getLongitude() + 0.003, here.getLatitude() - 0.003, here.getLongitude() + 0.002, "Test Client C", 0x0e40ff);
+                            Client clientB = new Client(here.getLatitude() + 0.002, here.getLongitude() + 0.001, here.getLatitude() + 0.001, here.getLongitude() - 0.001, "Test Client B", 0x3F51A5);
+                            Client clientC = new Client(here.getLatitude() - 0.001, here.getLongitude() + 0.003, here.getLatitude() - 0.003, here.getLongitude() + 0.002, "Test Client C", 0x2FA521);
 
                             clients.add(clientA);
                             clients.add(clientB);
@@ -195,10 +195,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                         Log.d(TAG, "Showing local clients");
                         for (Client client : clients) {
                             Log.d(TAG, client.getClientName() + " - N: " + client.getNbound() + " S: " + client.getSbound() + " E: " + client.getEbound() + " W: " + client.getWbound());
+                            Location temp = new Location(LocationManager.GPS_PROVIDER);
+                            Location side = new Location(LocationManager.GPS_PROVIDER);
+                            LatLng center = client.getCenterLatLng();
+                            temp.setLatitude(center.latitude);
+                            temp.setLongitude(center.longitude);
+                            side.setLatitude(center.latitude);
+                            side.setLongitude(client.getEbound());
+
+                            float overlayWidth = temp.distanceTo(side) * 2;
                             int height = (int) Math.round((client.getNbound() - client.getSbound())*100000);
                             int width = (int) Math.round((client.getEbound() - client.getWbound())*100000);
+
                             Bitmap image = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                             Bitmap source = BitmapFactory.decodeResource(context.getResources(), R.mipmap.client_square);
+
                             Canvas canvas = new Canvas(image);
                             Paint paint = new Paint();
                             ColorFilter filter = new LightingColorFilter(client.getColor(), 0);
@@ -210,14 +221,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             } else {
                                 matrix.postScale(((float) height) / ((float) width), 1);
                             }
-                            Log.d(TAG, matrix.toString());
+
                             canvas.drawBitmap(source, matrix, paint);
                             BitmapDescriptor imaged = BitmapDescriptorFactory.fromBitmap(image);
 
                             //BitmapDescriptor image = BitmapDescriptorFactory.fromResource(R.drawable.client_square);
                             mMap.addGroundOverlay(new GroundOverlayOptions()
                                     .image(imaged)
-                                    .position(client.getCenterLatLng(), 500)
+                                    .position(client.getCenterLatLng(), overlayWidth)
                                     .transparency((float) 0.5));
                         }
 
@@ -228,7 +239,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         } catch (SecurityException e) {
             Log.e("Error:", e.getLocalizedMessage());
         }
-
 
         BitmapDescriptor image = BitmapDescriptorFactory.fromResource(R.mipmap.trollface);
         mMap.addGroundOverlay(new GroundOverlayOptions()
@@ -242,20 +252,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .position(new LatLng(39.774600, -86.176680), 2264)
                 .transparency((float) 0.5));
 
-
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 Log.d(TAG, "map clicked! lat: " + latLng.latitude + ", lng : " + latLng.longitude);
                 for (Client client : visibleClients) {
+                    double Nbound = client.getNbound();
+                    double Ebound = client.getEbound();
+                    double Sbound = client.getSbound();
+                    double Wbound = client.getWbound();
+                    String name = client.getClientName();
 
+                    Log.d(TAG, name + " - N: " + Nbound + " S: " + Sbound + " E: " + Ebound + " W: " + Wbound);
                     //TODO: Handle client overlap!!
-                    if ((latLng.latitude <= client.getNbound()) && (latLng.latitude >= client.getSbound())) {
-                        Log.d(TAG, "clicked between vertical bounds of " + client.getClientName());
+                    if ((latLng.latitude <= Nbound) && (latLng.latitude >= Sbound)) {
+                        Log.d(TAG, "clicked between vertical bounds of " + name);
+                    }
+                    if ((latLng.longitude <= Ebound) && (latLng.longitude >= Wbound)) {
+                        Log.d(TAG, "clicked between horizontal bounds of " + name);
                     }
 
-                    if ((latLng.latitude <= client.getNbound()) && (latLng.latitude >= client.getSbound()) && (latLng.longitude >= client.getEbound()) && (latLng.longitude <= client.getWbound())) {
-                        Log.d(TAG, "Client " + client.getClientName() + " clicked!");
+                    if ((latLng.latitude <= Nbound) && (latLng.latitude >= Sbound) && (latLng.longitude <= Ebound) && (latLng.longitude >= Wbound)) {
+                        Log.d(TAG, "Client " + name + " clicked!");
                     }
                 }
             }
@@ -524,12 +542,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         display.getSize(size);
 
         double zoom = mMap.getCameraPosition().zoom;
-        double width = 15450000.0 / Math.pow(2, (zoom - 1));
+            double width = 15450000.0 / Math.pow(2, (zoom - 1));
         Log.d(TAG, "width: " + width);
 
         LatLng latLng = mMap.getCameraPosition().target;
 
-        overlayOptions.position(latLng, (float) width);
+            overlayOptions.position(latLng, (float) width);
         overlayOptions.bearing(mMap.getCameraPosition().bearing);
         overlayOptions.image(image);
 
