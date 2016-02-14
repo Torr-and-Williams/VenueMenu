@@ -22,6 +22,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -63,7 +64,6 @@ import java.util.List;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
-import butterknife.OnClick;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
     @Bind(R.id.add_marker_button)
@@ -108,8 +108,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private int y;
     private RelativeLayout.LayoutParams params;
     private DisplayMetrics displayMetrics;
-    private int width;
-    private int height;
+    //private int width;
+    //private int height;
     private boolean flatMode = false;
 
     private ArrayList<Point> points;
@@ -263,17 +263,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     double Wbound = client.getWbound();
                     String name = client.getClientName();
 
-                    Log.d(TAG, name + " - N: " + Nbound + " S: " + Sbound + " E: " + Ebound + " W: " + Wbound);
                     //TODO: Handle client overlap!!
+
+                    /*
                     if ((latLng.latitude <= Nbound) && (latLng.latitude >= Sbound)) {
                         Log.d(TAG, "clicked between vertical bounds of " + name);
                     }
                     if ((latLng.longitude <= Ebound) && (latLng.longitude >= Wbound)) {
                         Log.d(TAG, "clicked between horizontal bounds of " + name);
                     }
+                    */
 
                     if ((latLng.latitude <= Nbound) && (latLng.latitude >= Sbound) && (latLng.longitude <= Ebound) && (latLng.longitude >= Wbound)) {
                         Log.d(TAG, "Client " + name + " clicked!");
+                        zoomInOnRegion(client);
                     }
                 }
             }
@@ -301,12 +304,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
+    // Functions
 
-
-    //Buttons
-
-    @OnClick(R.id.add_marker_button)
-    public void addMarker() {
+    public void addMarker(View v) {
         Location location; //Location
 
         try {
@@ -316,6 +316,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //Make a new waypoint
                 //TODO: Throw up confirmation dialog before saving - set name, upload image etc there
                 //TODO: Just start with the name for now. Create a view with an edittext in that becomes visible when this happens
+
+
                 Waypoint waypoint = new Waypoint("Test", location.getLatitude(), location.getLongitude(), null);
 
                 waypoint.saveInBackground(new SaveCallback() {
@@ -336,22 +338,20 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    @OnClick(R.id.edit_layer_button)
-    public void editLayer() {
+    public void editLayer(View v) {
         addMarkerFab.setVisibility(View.INVISIBLE);
         editLayerFab.setVisibility(View.INVISIBLE);
 
         showMenu();
     }
 
-    @OnClick(R.id.add_lot_button)
-    public void addLot() {
+    public void addLot(View v) {
         Display display = getWindowManager().getDefaultDisplay();
         Point size = new Point();
         display.getSize(size);
 
-        width = size.x;
-        height = size.y;
+        //width = size.x;
+        //height = size.y;
 
         if (lotMode) {
             Log.d(TAG, "ADD lot mode Go!");
@@ -371,7 +371,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             paint.setStrokeWidth(10);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStrokeCap(Paint.Cap.ROUND);
-            paint.setColor(getResources().getColor(R.color.colorAccent));
+            paint.setColor(ContextCompat.getColor(context, R.color.colorAccent));
 
             final float statusBarHeight = getResources().getDimension(getResources().getIdentifier("status_bar_height", "dimen", "android"));
 
@@ -392,7 +392,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             params = (RelativeLayout.LayoutParams) lot_corner.getLayoutParams();
                             params.setMargins(x, y, 0, 0);
                             lot_corner.setLayoutParams(params);
-                            lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_orange));
+                            lot_corner.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.lot_corner_orange));
 
                             if (points != null) {
                                 lot_corner.setTag(points.size() - 1);
@@ -436,7 +436,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     } else if (event.getAction() == MotionEvent.ACTION_UP) {
                         if (newPoint) {
-                            lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_white));
+                            lot_corner.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.lot_corner_white));
                             Log.d(TAG, "save corner");
                             Point point = new Point(x, y);
                             points.add(point);
@@ -445,7 +445,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                             lot_corner.setVisibility(View.INVISIBLE);
                             ImageView cornerView = new ImageView(getApplicationContext());
-                            cornerView.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_white));
+                            cornerView.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.lot_corner_white));
                             RelativeLayout.LayoutParams cParams = new RelativeLayout.LayoutParams(Math.round(32 * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)), Math.round(32 * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)));
                             cParams.setMargins(x, y, 0, 0);
                             cornerView.setLayoutParams(cParams);
@@ -461,12 +461,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                     Log.d(TAG, "corner tapped");
                                     if (movingCorner) {
                                         Log.d(TAG, "moving corner false");
-                                        lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_orange));
+                                        lot_corner.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.lot_corner_orange));
                                         movingCorner = false;
                                     } else {
                                         lot_corner = (ImageView) view;
                                         Log.d(TAG, "moving corner true");
-                                        lot_corner.setImageDrawable(getResources().getDrawable(R.drawable.lot_corner_white));
+                                        lot_corner.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.lot_corner_white));
                                         movingCorner = true;
                                     }
                                 }
@@ -530,8 +530,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    @OnClick(R.id.confirm_overlay)
-    public void confirmOverlay() {
+    public void confirmOverlay(View v) {
         Log.d(TAG, "setting Overlay");
 
         BitmapDescriptor image = BitmapDescriptorFactory.fromPath(picturePath);
@@ -648,7 +647,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                         leave = false;
                         mainBtns = true;
-                        addMarker();
+                        addMarker(null);
                         break;
 
                     case R.id.button2:
@@ -766,6 +765,27 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         lots_drawing.setImageDrawable(new BitmapDrawable(getResources(), drawing));
     }
 
+    public void zoomInOnRegion(Client client) {
+        //Location location = new Location("null provider");
+        flatMode = true;
+        try {
+            Integer zoomLevel;
+            double ClientWidth;
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(client.getCenterLatLng(), 13));
+
+            CameraPosition cameraPosition = new CameraPosition.Builder()
+                    .target(client.getCenterLatLng())      // Sets the center of the map to location user
+                    .zoom(20)                   // Sets the zoom
+                    .bearing(90)                // Sets the orientation of the camera to east
+                    .tilt(0)                   // Sets the tilt of the camera
+                    .build();                   // Creates a CameraPosition from the builder
+            mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+            mMap.getUiSettings().setTiltGesturesEnabled(false);
+        } catch (SecurityException e) {
+            Log.e("Error:", e.getLocalizedMessage());
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -795,7 +815,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             preview.setVisibility(View.INVISIBLE);
             overlayConfirm.setVisibility(View.INVISIBLE);
             lots_drawing.setVisibility(View.INVISIBLE);
-            lotMode = false;
             overlayMode = false;
             pathMode = false;
 
